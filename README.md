@@ -7,7 +7,7 @@ This project is a basic recommendation system built using Streamlit. It provides
 ```
 Gui_Recommendation_System
 ├── src
-│   ├── streamlit_rec_sys.py       # Main entry point for the Streamlit application
+│   ├── streamlit_recommendation.py       # Main entry point for the Streamlit application
 │   ├── data
 │   │   └── load_data.py           # Functions to load and preprocess data
 │   ├── models
@@ -15,6 +15,8 @@ Gui_Recommendation_System
 │   ├── utils
 │   │   └── helpers.py              # Utility functions for the application
 ├── requirements.txt                # Project dependencies
+├── Procfile                        # Script to run setup and to start streamlit file
+├── setup.sh                        # Script to setup streamlit on server
 └── README.md                       # Project documentation
 ```
 
@@ -23,7 +25,7 @@ Gui_Recommendation_System
 1. Clone the repository:
    ```
    git clone <repository-url>
-   cd streamlit-rec-sys
+   cd gui-recommendation-system
    ```
 
 2. Install the required dependencies:
@@ -33,7 +35,7 @@ Gui_Recommendation_System
 
 3. Run the Streamlit application:
    ```
-   streamlit run src/streamlit_rec_sys.py
+   streamlit run src/streamlit_recommendation.py
    ```
 
 ## Usage Guidelines
