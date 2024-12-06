@@ -231,7 +231,7 @@ elif page == "Recommendation Function":
     def get_product_recommendations(df_sp, ma_san_pham, gensim_model, n_recommendations=5):
         idx = df_sp.index[df_sp['ma_san_pham'] == ma_san_pham].tolist()
         if not idx:
-            st.error("Product not found!")
+            # st.error("Product not found!")
             return pd.DataFrame()
         idx = idx[0]
         sim_scores = list(enumerate(gensim_model[idx]))
@@ -293,7 +293,10 @@ elif page == "Recommendation Function":
                 try:
                     product_id = int(product_id)
                     recommendations = get_product_recommendations(df_sp, product_id, loaded_gensim)
-                    st.dataframe(recommendations if not recommendations.empty else "No similar products found.")
+                    if recommendations.empty:
+                        st.error("No similar products found!")
+                    else:
+                        st.dataframe(recommendations if not recommendations.empty else "No similar products found.")
                 except ValueError:
                     st.error("Invalid Product ID!")
 
@@ -324,5 +327,9 @@ elif page == "Recommendation Function":
         if st.button("Get Recommendations for Selected Product"):
             product_id = selected_product['ma_san_pham'].values[0]
             recommendations = get_product_recommendations(df_sp, product_id, loaded_gensim)
-            st.dataframe(recommendations if not recommendations.empty else "No similar products found.")
+            
+            if recommendations.empty:
+                st.error("No similar products found!")
+            else:
+                st.dataframe(recommendations if not recommendations.empty else "No similar products found.")
             
