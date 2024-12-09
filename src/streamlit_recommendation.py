@@ -6,17 +6,28 @@ import pandas as pd
 import requests
 import pickle
 from surprise import Reader, Dataset, SVDpp
-
-# Add a banner image
-# image = Image.open("src/images/hasaki_banner.jpg")
-# st.image(image, caption="Hasaki.VN - Quality & Trust", use_container_width=True)
-# st.image('src/images/hasaki_banner_2.jpg', use_container_width=True)  # Updated parameter
-
+from utils import helpers, filters
 
 st.set_page_config(page_title="Recommendation System", page_icon=":shopping_cart:", layout="wide")
-
+button_style = """
+    <style>
+    .stButton>button {
+        background-color: #4CAF50;
+        color: white;
+        border: none;
+        padding: 10px 24px;
+        text-align: center;
+        text-decoration: none;
+        display: inline-block;
+        font-size: 16px;
+        margin: 4px 2px;
+        cursor: pointer;
+        border-radius: 12px;
+    }
+    </style>
+    """
 # Sidebar for navigation
-menu = ["Home", "Overview",'Project Summary', "Recommendation Function"]
+menu = ["NewPage", "Home", "Overview",'Project Summary', "Recommendation Function"]
 
 st.sidebar.title("Navigation")
 page = st.sidebar.selectbox("Choose a page", menu)
@@ -67,7 +78,27 @@ st.sidebar.markdown(
     unsafe_allow_html=True,
 )
 
-menu = ["Home", "Overview",'Project Summary', "Recommendation Function"]
+# Load Data
+@st.cache_data
+def load_data():
+    df = helpers.read_csv('src/data/df_file.csv')
+    df_products = helpers.read_csv('src/data/San_pham.csv')
+    return df, df_products
+
+df, df_products = load_data()
+
+
+# Load or Train Model
+@st.cache_resource
+def load_model(df):
+    reader = Reader()
+    data_sample = Dataset.load_from_df(df[['ma_khach_hang', 'ma_san_pham', 'so_sao']].sample(5000, random_state=42), reader)
+    trainset = data_sample.build_full_trainset()
+    algorithm = SVDpp()
+    algorithm.fit(trainset)
+    return algorithm
+
+
 
 # Main page logic
 if page == "Home":
@@ -350,23 +381,6 @@ elif page == "Recommendation Function":
     image = Image.open("src/images/recommend.jpg")
     st.image(image, caption="Hasaki.VN - Quality & Trust", use_container_width=True)
 
-    # Load Data
-    @st.cache_data
-    def load_data():
-        df_sp = pd.read_csv('src/data/San_pham.csv')
-        df = pd.read_csv('src/data/df_file.csv')
-        return df, df_sp
-
-    # Load or Train Model
-    @st.cache_resource
-    def load_model(df):
-        reader = Reader()
-        data_sample = Dataset.load_from_df(df[['ma_khach_hang', 'ma_san_pham', 'so_sao']].sample(5000, random_state=42), reader)
-        trainset = data_sample.build_full_trainset()
-        algorithm = SVDpp()
-        algorithm.fit(trainset)
-        return algorithm
-
     # Customer Recommendations
     def recommend_products_with_names(algorithm, ma_khach_hang, df, df_sp, n_recommendations=5):
         all_products = df['ma_san_pham'].unique()
@@ -491,3 +505,85 @@ elif page == "Recommendation Function":
             else:
                 st.dataframe(recommendations if not recommendations.empty else "No similar products found.")
             
+
+###############################################
+
+elif page == "NewPage":
+    st.header("Recommendation Functions")
+    # Load product similarity matrix
+    with open('src/models/gensim_model.pkl', 'rb') as f:
+        loaded_gensim = pickle.load(f)
+
+    # Add 2 tabs for Content-Base Filtering and Collaborative Filtering
+    tab_containers = st.tabs(["Content-Based Filtering", "Collaborative Filtering"])
+    with tab_containers[0]:
+        st.markdown("""
+            #### Mô tả:
+            Content-Based Filtering Description...
+        """) # Todo: sẽ update thêm
+        
+        st.markdown("""
+            #### Tìm sản phẩm đề xuất
+        """)
+        
+        option = st.radio("Chọn phương thức:", 
+                          options=["Chọn tên sản phẩm", "Nhập mã/ tên sản phẩm"])
+        
+        product_codes = []
+        if option == "Chọn tên sản phẩm":    
+            selected_item = st.selectbox("Chọn tên sản phẩm:", df_products['ten_san_pham'].unique())
+            product_codes = df_products[df_products["ten_san_pham"] == selected_item]["ma_san_pham"]
+
+        elif option == "Nhập mã/ tên sản phẩm":
+            search_criteria = st.text_input("Nhập mã hoặc tên sản phẩm:")
+
+            # Add sample text for product name and product code
+            st.markdown("📝 **Ví dụ tên sản phẩm:** Nước Hoa Hồng Klairs  \n📝 **Ví dụ mã sản phẩm:** 318900012")
+        
+
+            if (search_criteria != "" and search_criteria.isdigit()):
+                result = df_products[df_products["ma_san_pham"] == eval(search_criteria)]
+                if not result.empty:
+                    product_codes = result["ma_san_pham"]
+                else:
+                    st.write("Không tìm thấy sản phẩm! Xly thêm tìm kiếm sản phẩm gì khác????")
+                
+            elif (search_criteria != ""):
+                result = df_products[(df_products["ten_san_pham"].str.contains(search_criteria, case=False))]
+                result = result.sort_values(by='diem_trung_binh', ascending=False).head(5)
+                if not result.empty:
+                    product_codes = result["ma_san_pham"]
+                else:
+                    st.write("Không tìm thấy sản phẩm!")
+
+        st.markdown(button_style, unsafe_allow_html=True)
+        if st.button("Hiển thị sản phẩm"):
+            recommendations = filters.get_product_recommendations(df_products, product_codes, loaded_gensim)
+            
+            if recommendations.empty:
+                st.error("No similar products found!")
+            else:
+                st.subheader("Recommended Product(s)")
+                for _, row in recommendations.iterrows():
+                    with st.container():
+                        cols = st.columns([1, 2, 1])
+                        with cols[0]:
+                            cols_0 = st.columns([1,3])
+                            with cols_0[1]:
+                                try:
+                                    image_path = "src/images/default_sample.png"
+                                    image = Image.open(image_path)
+                                    st.image(image, use_container_width=True)
+                                except FileNotFoundError:
+                                    st.error(f"Image not found at {image_path}")
+                        with cols[1]:
+                            st.markdown(f"##### {row['ten_san_pham']}")
+                            st.markdown(f"**Mã sản phẩm**: {row['ma_san_pham']}")
+                            st.markdown(f"**Điểm trung bình**: {row['diem_trung_binh']:.2f}")
+                            st.markdown(f"**Giá bán**: {row['gia_ban']:,} VND")
+                            expander = st.expander("Chi tiết sản phẩm")
+                            expander.write(row.get('mo_ta', "Không có mô tả."))
+
+    with tab_containers[1]:
+        st.write("Collaborative Filtering")
+
