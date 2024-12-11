@@ -27,7 +27,7 @@ button_style = """
     }
     </style>
     """
-menu = ["NewPage", "Project Summary", "Recommender System"]
+menu = ["Project Summary", "Recommender System"]
 st.sidebar.title("Đồ Án Tốt Nghiệp")
 st.sidebar.markdown(
     """
@@ -351,7 +351,7 @@ if page == "Project Summary":
       
 #####################################
 
-elif page == "Recommender System":
+elif page == "Recommender System_OLD":
     image = Image.open("src/images/recommend.jpg")
     st.image(image, caption="Hasaki.VN - Quality & Trust", use_container_width=True)
 
@@ -480,7 +480,7 @@ elif page == "Recommender System":
                 st.dataframe(recommendations if not recommendations.empty else "No similar products found.")
             
 #############################
-elif page == "NewPage":
+elif page == "Recommender System":
     st.header("Recommendation Functions")
     # Load product similarity matrix
     with open('src/models/gensim_model.pkl', 'rb') as f:
