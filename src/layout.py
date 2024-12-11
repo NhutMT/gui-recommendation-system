@@ -27,7 +27,7 @@ button_style = """
     }
     </style>
     """
-menu = ["Project Summary","NewPage", "Recommender System"]
+menu = ["Project Summary", "Recommender System"]
 st.sidebar.title("Đồ Án Tốt Nghiệp")
 st.sidebar.markdown(
     """
@@ -125,7 +125,7 @@ def load_data():
 df, df_products = load_data()
 
 
-# Load or Train Model
+# # Load or Train Model
 @st.cache_resource
 def load_model(df):
     reader = Reader()
@@ -349,10 +349,9 @@ if page == "Project Summary":
             - Khám phá thêm các mô hình **Deep Learning** hoặc Hybrid.
         """)
       
-
 #####################################
 
-elif page == "Recommender System":
+elif page == "Recommender System_OLD":
     image = Image.open("src/images/recommend.jpg")
     st.image(image, caption="Hasaki.VN - Quality & Trust", use_container_width=True)
 
@@ -481,7 +480,7 @@ elif page == "Recommender System":
                 st.dataframe(recommendations if not recommendations.empty else "No similar products found.")
             
 #############################
-elif page == "NewPage":
+elif page == "Recommender System":
     st.header("Recommendation Functions")
     # Load product similarity matrix
     with open('src/models/gensim_model.pkl', 'rb') as f:
@@ -536,192 +535,97 @@ elif page == "NewPage":
             if recommendations.empty:
                 st.error("No similar products found!")
             else:
-                st.subheader("Recommended Product(s)")
+                st.subheader("✨ Recommendation(s)")
                 for _, row in recommendations.iterrows():
-                    with st.container():
-                        cols = st.columns([1, 2, 1])
-                        with cols[0]:
-                            cols_0 = st.columns([1,3])
-                            with cols_0[1]:
-                                try:
-                                    image_path = "src/images/default_sample.png"
-                                    image = Image.open(image_path)
-                                    st.image(image, use_container_width=True)
-                                except FileNotFoundError:
-                                    st.error(f"Image not found at {image_path}")
-                        with cols[1]:
-                            st.markdown(f"##### {row['ten_san_pham']}")
-                            st.markdown(f"**Mã sản phẩm**: {row['ma_san_pham']}")
-                            st.markdown(f"**Điểm trung bình**: {row['diem_trung_binh']:.2f}")
-                            st.markdown(f"**Giá bán**: {row['gia_ban']:,} VND")
-                            expander = st.expander("Chi tiết sản phẩm")
-                            expander.write(row.get('mo_ta', "Không có mô tả."))
+                    helpers.load_item_template(row)
 
+    # with tab_containers[1]:
+            # --- Collaborative Filtering ---
     with tab_containers[1]:
-        st.write("Collaborative Filtering")
+        st.markdown("""
+            #### Collaborative Filtering
+            Collaborative Filtering recommends products based on user behavior and preferences, finding patterns in user interactions.
+        """)
 
+        st.markdown("""
+            **Why Use Collaborative Filtering?**
+            - Leverages user activity for personalized recommendations.
+            - Discovers hidden connections between users and products.
+        """)
 
-###############################################
-# elif page == "NewPage":
-#     st.header("Recommendation Functions")
-#     # Load product similarity matrix
-#     with open('src/models/gensim_model.pkl', 'rb') as f:
-#         loaded_gensim = pickle.load(f)
+        st.markdown("""
+            #### Find Recommendations
+            Select an option below to get started:
+        """)
 
-#     # Add 2 tabs for Content-Based Filtering and Collaborative Filtering
-#     tab_containers = st.tabs(["Content-Based Filtering", "Collaborative Filtering"])
-    
-#     # --- Content-Based Filtering ---
-#     with tab_containers[0]:
-#         st.markdown("""
-#             #### Content-Based Filtering
-#             This method suggests products based on the features of the items you interact with. It compares similarities to recommend products tailored to your preferences.
-#         """)
+        option_cf = st.radio("Choose an option:",
+            options=["Find recommendations for a user", "View trending products"])
 
-#         st.markdown("""
-#             #### Find Recommended Products
-#         """)
+        # Prepare data
+        customer_ids = df['ma_khach_hang'].unique()
+        suprise_svdpp_algorithm = filters.load_model(df)
 
-#         option_cb = st.radio("Choose an option:", 
-#                              options=["Select product by name", "Enter product code/name"])
+        if option_cf == "Find recommendations for a user":
+            if "customer_id" not in st.session_state:
+                st.session_state.customer_id = ""
 
-#         product_codes = []
-#         if option_cb == "Select product by name":    
-#             selected_item = st.selectbox("Choose product name:", df_products['ten_san_pham'].unique())
-#             product_codes = df_products[df_products["ten_san_pham"] == selected_item]["ma_san_pham"]
+            # Login Form
+            if st.session_state.customer_id == "" or st.session_state.customer_id not in customer_ids:
+                with st.form("login_form"):
+                    customer_id = st.text_input(
+                    "Nhập Mã Khách Hàng:",
+                    value=st.session_state.customer_id).strip()
+                    st.markdown("""
+                        📝 **Example User ID:** 2888
+                    """)
+                    submitted = st.form_submit_button("Login")
+                    if submitted:
+                        try:
+                            customer_id = int(customer_id)
+                            if customer_id not in customer_ids:
+                                st.error("Customer ID not found!")
+                            else:
+                                st.session_state.customer_id = customer_id
+                        except ValueError:
+                            st.error("Invalid Customer ID!")
+            else:
+                if st.button("Logout"):
+                    st.session_state.customer_id = ""
 
-#         elif option_cb == "Enter product code/name":
-#             search_criteria = st.text_input("Enter product code or name:")
-
-#             st.markdown("""
-#                 📝 **Example product name:** Klairs Toner  \n📝 **Example product code:** 318900012
-#             """)
-
-#             if search_criteria:
-#                 if search_criteria.isdigit():
-#                     result = df_products[df_products["ma_san_pham"] == eval(search_criteria)]
-#                     if not result.empty:
-#                         product_codes = result["ma_san_pham"]
-#                     else:
-#                         st.error("Product not found! Please try another search.")
-#                 else:
-#                     result = df_products[df_products["ten_san_pham"].str.contains(search_criteria, case=False)]
-#                     result = result.sort_values(by='diem_trung_binh', ascending=False).head(5)
-#                     if not result.empty:
-#                         product_codes = result["ma_san_pham"]
-#                     else:
-#                         st.error("Product not found! Please try another search.")
-
-#         st.markdown(button_style, unsafe_allow_html=True)
-#         if st.button("Show Recommendations"):
-#             recommendations = filters.get_product_recommendations(df_products, product_codes, loaded_gensim)
+            ##########################################
             
-#             if recommendations.empty:
-#                 st.error("No similar products found!")
-#             else:
-#                 st.subheader("Recommended Products:")
-#                 for _, row in recommendations.iterrows():
-#                     with st.container():
-#                         cols = st.columns([1, 2, 1])
-#                         with cols[0]:
-#                             cols_0 = st.columns([1, 3])
-#                             with cols_0[1]:
-#                                 try:
-#                                     image_path = "src/images/default_sample.png"
-#                                     image = Image.open(image_path)
-#                                     st.image(image, use_container_width=True)
-#                                 except FileNotFoundError:
-#                                     st.error(f"Image not found at {image_path}")
-#                         with cols[1]:
-#                             st.markdown(f"##### {row['ten_san_pham']}")
-#                             st.markdown(f"**Product Code:** {row['ma_san_pham']}")
-#                             st.markdown(f"**Average Rating:** {row['diem_trung_binh']:.2f}")
-#                             st.markdown(f"**Price:** {row['gia_ban']:,} VND")
-#                             expander = st.expander("Product Details")
-#                             expander.write(row.get('mo_ta', "No description available."))
-
-#     # --- Collaborative Filtering ---
-#     with tab_containers[1]:
-#         st.markdown("""
-#             #### Collaborative Filtering
-#             Collaborative Filtering recommends products based on user behavior and preferences, finding patterns in user interactions.
-#         """)
-
-#         st.markdown("""
-#             **Why Use Collaborative Filtering?**
-#             - Leverages user activity for personalized recommendations.
-#             - Discovers hidden connections between users and products.
-#         """)
-
-#         st.markdown("""
-#             #### Find Recommendations
-#             Select an option below to get started:
-#         """)
-
-#         option_cf = st.radio(
-#             "Choose an option:",
-#             options=["Find recommendations for a user", "View trending products"]
-#         )
-
-#         if option_cf == "Find recommendations for a user":
-#             user_id = st.text_input("Enter User ID:")
-#             st.markdown("""
-#                 📝 **Example User ID:** U12345
-#             """)
-            
-#             if user_id:
-#                 try:
-#                     user_recommendations = filters.get_user_recommendations(user_id, df_user_interactions)
+            if st.session_state.customer_id != "":
+                try:
+                    st.write(f"Welcome back! Customer code {st.session_state.customer_id}")
+                    # Display customer history
+                    st.subheader("📜 Customer Shopping History")
+                    history = filters.get_customer_history(st.session_state.customer_id, df, df_products)
+                    st.dataframe(history if not history.empty else "No history available.")
                     
-#                     if user_recommendations.empty:
-#                         st.error("No recommendations found for this user!")
-#                     else:
-#                         st.subheader("Recommended Products for You:")
-#                         for _, row in user_recommendations.iterrows():
-#                             with st.container():
-#                                 cols = st.columns([1, 2, 1])
-#                                 with cols[0]:
-#                                     cols_0 = st.columns([1, 3])
-#                                     with cols_0[1]:
-#                                         try:
-#                                             image_path = "src/images/default_sample.png"
-#                                             image = Image.open(image_path)
-#                                             st.image(image, use_container_width=True)
-#                                         except FileNotFoundError:
-#                                             st.error(f"Image not found at {image_path}")
-#                                 with cols[1]:
-#                                     st.markdown(f"##### {row['ten_san_pham']}")
-#                                     st.markdown(f"**Product Code:** {row['ma_san_pham']}")
-#                                     st.markdown(f"**Average Rating:** {row['diem_trung_binh']:.2f}")
-#                                     st.markdown(f"**Price:** {row['gia_ban']:,} VND")
-#                                     expander = st.expander("Product Details")
-#                                     expander.write(row.get('mo_ta', "No description available."))
-#                 except Exception as e:
-#                     st.error(f"An error occurred: {str(e)}")
+                    # Recommendations
+                    recommendations = filters.recommend_products_with_names(suprise_svdpp_algorithm, st.session_state.customer_id, df, df_products)
+                    # st.dataframe(recommendations if not recommendations.empty else "No recommendations available.")
 
-#         elif option_cf == "View trending products":
-#             st.subheader("Trending Products")
-#             trending_products = filters.get_trending_products(df_products)
+                    if recommendations.empty:
+                        st.error("No similar products found!")
+                    else:
+                        st.subheader("✨ Recommendation(s)")
+                        for _, row in recommendations.iterrows():
+                            helpers.load_item_template(row)
+                except ValueError:
+                    st.error("Invalid Customer ID!")
+
+        elif option_cf == "View trending products":
+    
+            # Get trending top 5 products with diem_trung_binh > 4.5
+            list_product_ids = df_products[df_products['diem_trung_binh'] > 4.5]['ma_san_pham'].unique()
+            trending_product_ids = pd.Series(list_product_ids).sample(n=10)
             
-#             if trending_products.empty:
-#                 st.error("No trending products found!")
-#             else:
-#                 for _, row in trending_products.iterrows():
-#                     with st.container():
-#                         cols = st.columns([1, 2, 1])
-#                         with cols[0]:
-#                             cols_0 = st.columns([1, 3])
-#                             with cols_0[1]:
-#                                 try:
-#                                     image_path = "src/images/default_sample.png"
-#                                     image = Image.open(image_path)
-#                                     st.image(image, use_container_width=True)
-#                                 except FileNotFoundError:
-#                                     st.error(f"Image not found at {image_path}")
-#                         with cols[1]:
-#                             st.markdown(f"##### {row['ten_san_pham']}")
-#                             st.markdown(f"**Product Code:** {row['ma_san_pham']}")
-#                             st.markdown(f"**Average Rating:** {row['diem_trung_binh']:.2f}")
-#                             st.markdown(f"**Price:** {row['gia_ban']:,} VND")
-#                             expander = st.expander("Product Details")
-#                             expander.write(row.get('mo_ta', "No description available."))
+            recommendations = filters.get_product_recommendations(df_products, trending_product_ids.tolist(), loaded_gensim)
+            
+            if recommendations.empty:
+                st.error("No similar products found!")
+            else:
+                st.subheader("✨ Trending Recommendation(s)")
+                for _, row in recommendations.iterrows():
+                    helpers.load_item_template(row)
