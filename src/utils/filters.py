@@ -1,4 +1,6 @@
 import pandas as pd
+from surprise import Reader, Dataset, SVDpp
+
 # Customer Recommendations
 def recommend_products_with_names(algorithm, cust_code, df, df_products, n_recommendations=5):
     all_products = df['ma_san_pham'].unique()
@@ -15,7 +17,7 @@ def recommend_products_with_names(algorithm, cust_code, df, df_products, n_recom
 
     recommended_df = pd.DataFrame(top_recommendations, columns=['ma_san_pham', 'predicted_rating'])
     recommended_with_names = recommended_df.merge(df_products, on='ma_san_pham', how='left')
-    return recommended_with_names[['ma_san_pham', 'ten_san_pham', 'predicted_rating']]
+    return recommended_with_names[['ma_san_pham', 'ten_san_pham', 'predicted_rating', 'diem_trung_binh', 'gia_ban', 'mo_ta']]
 
 # Product-Based Recommendations
 def get_product_recommendations(df_products, product_codes, gensim_model, n_recommendations=5):
@@ -37,3 +39,12 @@ def get_customer_history(cust_code, df, df_products):
     customer_history = df[df['ma_khach_hang'] == cust_code]
     customer_history_with_names = customer_history.merge(df_products, on='ma_san_pham', how='left')
     return customer_history_with_names[['ma_san_pham', 'ten_san_pham', 'so_sao']]
+
+# Load Model
+def load_model(df):
+    reader = Reader()
+    data_sample = Dataset.load_from_df(df[['ma_khach_hang', 'ma_san_pham', 'so_sao']].sample(5000, random_state=42), reader)
+    trainset = data_sample.build_full_trainset()
+    algorithm = SVDpp()
+    algorithm.fit(trainset)
+    return algorithm
