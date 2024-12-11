@@ -21,7 +21,8 @@ def load_item_template(data):
             st.markdown(f"##### {data['ten_san_pham']}")
             st.markdown(f"**Mã sản phẩm**: {data['ma_san_pham']}")
             st.markdown(f"**Điểm trung bình**: {data['diem_trung_binh']:.2f}")
-            st.markdown(f"**Giá bán**: {data['gia_ban']:,} VND")
+            st.markdown(f"⭐ **Đánh giá**: {data['diem_trung_binh']:.2f} / 5")
+            st.markdown(f"💵 **Giá**: {data['gia_ban']:,} VNĐ")
             expander = st.expander("Chi tiết sản phẩm")
             expander.write(data.get('mo_ta', "Không có mô tả."))
 
